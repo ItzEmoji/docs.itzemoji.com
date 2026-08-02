@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   basePathFor,
+  buildEnv,
   buildProject,
+  pipePrefixed,
   preflight,
   type SpawnRequest,
   type Spawner,
@@ -56,6 +58,51 @@ async function seedSubmodule(options: { lockfile?: boolean; output?: boolean } =
 describe("basePathFor", () => {
   test("wraps the name in slashes", () => {
     expect(basePathFor("aeroflare")).toBe("/aeroflare/");
+  });
+});
+
+describe("buildEnv", () => {
+  test("filters out undefined-valued entries from the base environment", () => {
+    const result = buildEnv(
+      { FOO: "bar", BAZ: undefined },
+      { DOCS_BASE_PATH: "/x/" },
+    );
+
+    expect(result).toEqual({ FOO: "bar", DOCS_BASE_PATH: "/x/" });
+    expect("BAZ" in result).toBe(false);
+  });
+
+  test("overrides always win over base entries", () => {
+    const result = buildEnv(
+      { DOCS_BASE_PATH: "/old/" },
+      { DOCS_BASE_PATH: "/new/" },
+    );
+
+    expect(result.DOCS_BASE_PATH).toBe("/new/");
+  });
+});
+
+describe("pipePrefixed", () => {
+  function toStream(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+  }
+
+  test("flushes a multi-byte UTF-8 sequence truncated at the end of the stream", async () => {
+    // "é" is 0xC3 0xA9 in UTF-8; only the first byte is ever sent, so the
+    // decoder holds it internally waiting for a continuation byte that
+    // never arrives. Without a final flush those bytes are silently
+    // dropped instead of surfacing as a replacement character.
+    const chunks = [new TextEncoder().encode("ab"), new Uint8Array([0xc3])];
+    const lines: string[] = [];
+
+    await pipePrefixed(toStream(chunks), "test", (line) => lines.push(line));
+
+    expect(lines).toEqual(["[test] ab�"]);
   });
 });
 

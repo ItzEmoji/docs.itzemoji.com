@@ -25,6 +25,23 @@ export function basePathFor(name: string): string {
   return `/${name}/`;
 }
 
+/**
+ * Merges `base` into a clean environment, dropping any entries whose value
+ * is `undefined`, then applies `overrides` last so they always win.
+ */
+export function buildEnv(
+  base: Record<string, string | undefined>,
+  overrides: Record<string, string>,
+): Record<string, string> {
+  const filtered = Object.fromEntries(
+    Object.entries(base).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+
+  return { ...filtered, ...overrides };
+}
+
 export async function preflight(
   project: ProjectConfig,
   repoRoot: string,
@@ -56,10 +73,9 @@ export async function buildProject(
 
   await preflight(project, options.repoRoot);
 
-  const env: Record<string, string> = {
-    ...(process.env as Record<string, string>),
+  const env = buildEnv(process.env, {
     DOCS_BASE_PATH: basePathFor(project.name),
-  };
+  });
 
   const hasLockfile = await Bun.file(join(cwd, "bun.lock")).exists();
   const install = hasLockfile ? "bun install --frozen-lockfile" : "bun install";
@@ -122,7 +138,7 @@ export const spawnShell: Spawner = async (request) => {
   return { exitCode: await proc.exited };
 };
 
-async function pipePrefixed(
+export async function pipePrefixed(
   stream: ReadableStream<Uint8Array>,
   prefix: string,
   write: (line: string) => void,
@@ -136,6 +152,8 @@ async function pipePrefixed(
     buffered = lines.pop() ?? "";
     for (const line of lines) write(`[${prefix}] ${line}`);
   }
+
+  buffered += decoder.decode();
 
   if (buffered.length > 0) write(`[${prefix}] ${buffered}`);
 }
