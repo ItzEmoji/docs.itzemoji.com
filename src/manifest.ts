@@ -18,6 +18,14 @@ const REQUIRED_FIELDS = [
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
+/**
+ * Directories the site's own assets occupy at the root of `dist/`. A project
+ * named after one of them would be copied in and then overwritten by the
+ * assets, silently serving a stylesheet's fonts where its documentation
+ * should be.
+ */
+const RESERVED_NAMES = new Set(["fonts"]);
+
 export function parseManifest(raw: string): ProjectConfig[] {
   let data: unknown;
   try {
@@ -67,6 +75,12 @@ function validateProject(entry: unknown, index: number): ProjectConfig {
   if (!NAME_PATTERN.test(project.name)) {
     throw new Error(
       `projects.json: ${label} has an invalid name — use lowercase letters, digits and dashes, starting with a letter or digit`,
+    );
+  }
+
+  if (RESERVED_NAMES.has(project.name)) {
+    throw new Error(
+      `projects.json: ${label} uses the reserved name "${project.name}" — the site serves its own assets from that path, so pick another name`,
     );
   }
 

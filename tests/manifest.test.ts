@@ -63,6 +63,11 @@ describe("parseManifest", () => {
     expect(() => parseManifest(withProjects([broken]))).toThrow(/lowercase/);
   });
 
+  test("rejects a name the site's own assets already occupy", () => {
+    const broken = { ...valid.projects[0], name: "fonts" };
+    expect(() => parseManifest(withProjects([broken]))).toThrow(/reserved name "fonts"/);
+  });
+
   test("rejects duplicate names", () => {
     expect(() =>
       parseManifest(withProjects([valid.projects[0], valid.projects[0]])),
