@@ -11,11 +11,19 @@ git submodule update --init --recursive
 
 bun run build            # build every project in projects.json
 bun run build aeroflare  # build only one
+bun run serve            # preview dist/ at http://localhost:8080
+bun run dev              # build, then serve
 bun test
 ```
 
 Output lands in `dist/`: one directory per project, plus a generated `index.html`
 linking to them all.
+
+`bun run serve` never builds — it serves whatever is already in `dist/`, so you can
+rebuild in another terminal without restarting it. Pass `--port 3000` or set `$PORT`
+to change the port. Previewing matters because a wrong `DOCS_BASE_PATH` produces a
+clean build log and a visibly broken page: check that `/<project>/` renders with its
+styles intact.
 
 ## Adding a project
 
