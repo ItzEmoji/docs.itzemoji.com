@@ -1,6 +1,31 @@
+import { icons } from "./icons.ts";
 import type { ProjectConfig } from "./manifest.ts";
 
 const SITE_TITLE = "docs.itzemoji.com";
+
+/**
+ * The direction contract for this build, emitted into the page so it survives
+ * into the deployed output and can be audited against the render.
+ */
+const CONTRACT = `
+  THESIS: One estate, two doors. This index is not a separate product with its
+  own look; it is the same site as openpgpkey.itzemoji.com with a different
+  payload, so a visitor arriving from either recognises the other. Refuses the
+  generic card grid that makes every docs hub interchangeable.
+  OWN-WORLD: Inherited from openpgpkey.itzemoji.com — restrained neutrals plus
+  one deep blue accent, white panels on a cool grey ground, 1px hairlines and
+  no resting shadows, 12px containers with 8px controls, Public Sans over
+  JetBrains Mono, both vendored, nothing loaded from a third party.
+  STORY: A reader arrives knowing a project's name, finds it in one screen,
+  and leaves into its documentation.
+  FIRST VIEWPORT: Sticky masthead carrying the domain; the word Documentation;
+  the project count; then the register itself — one bordered container, one
+  row per project carrying its name, its one line and its served path, the
+  whole row a link. No lede: an index explains itself by being one.
+  FORM: Brief-pinned. The user named openpgpkey.itzemoji.com as the world, so
+  it was inherited rather than rolled for; no concept round was run.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+`;
 
 export function escapeHtml(value: string): string {
   return value
@@ -12,20 +37,45 @@ export function escapeHtml(value: string): string {
 }
 
 export function renderIndexPage(projects: ProjectConfig[]): string {
+  const count = `${projects.length} ${projects.length === 1 ? "project" : "projects"}`;
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${SITE_TITLE}</title>
-<style>${STYLES}</style>
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Documentation for every ItzEmoji project, in one place.">
+<title>Documentation — ${SITE_TITLE}</title>
+<link rel="preload" href="/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<main>
-<h1>${SITE_TITLE}</h1>
-<p class="lede">Documentation for every project, in one place.</p>
+<!--${CONTRACT}-->
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <a class="brand" href="/">
+      ${icons.book}<span>${SITE_TITLE}</span>
+    </a>
+  </div>
+</header>
+
+<main><div class="wrap">
+<section class="section">
+  <h1 class="page-title">Documentation</h1>
+</section>
+
+<section class="section">
+  <h2 class="section-head">${count}</h2>
 ${renderBody(projects)}
-</main>
+</section>
+</div></main>
+
+<footer class="site-footer">
+  <div class="wrap inner">
+    <p>Built from each project's own repository.</p>
+  </div>
+</footer>
 </body>
 </html>
 `;
@@ -33,61 +83,29 @@ ${renderBody(projects)}
 
 function renderBody(projects: ProjectConfig[]): string {
   if (projects.length === 0) {
-    return `<p class="empty">No documentation has been published yet.</p>`;
+    return `  <div class="empty">
+    <p>No documentation has been published yet.</p>
+    <p>Add a project to <span class="mono">projects.json</span> and build again.</p>
+  </div>`;
   }
-  return `<ul class="projects">\n${projects.map(renderCard).join("\n")}\n</ul>`;
+  return `  <div class="record">
+${projects.map(renderProject).join("\n")}
+  </div>`;
 }
 
-function renderCard(project: ProjectConfig): string {
-  return `<li><a href="/${escapeHtml(project.name)}/">
-<span class="title">${escapeHtml(project.title)}</span>
-<span class="description">${escapeHtml(project.description)}</span>
-</a></li>`;
+/**
+ * One entry in the register: what the project is called, what it is, and the
+ * path it is served at. The row itself is the link — a reader scanning for a
+ * name should not have to find a separate control once they see it.
+ */
+function renderProject(project: ProjectConfig): string {
+  const name = escapeHtml(project.name);
+  return `    <a class="row" href="/${name}/">
+      <span class="row-text">
+        <span class="row-title">${escapeHtml(project.title)}</span>
+        <span class="row-desc">${escapeHtml(project.description)}</span>
+      </span>
+      <span class="row-path">/${name}/</span>
+      <span class="row-go">${icons.chevronRight}</span>
+    </a>`;
 }
-
-const STYLES = `
-:root {
-  color-scheme: light dark;
-  --bg: #fbfbfd;
-  --fg: #16161a;
-  --muted: #5f5f6b;
-  --card: #ffffff;
-  --border: #e4e4ea;
-  --accent: #3b5bdb;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #101014;
-    --fg: #f2f2f5;
-    --muted: #a0a0ad;
-    --card: #18181d;
-    --border: #2a2a32;
-    --accent: #8ea3ff;
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  padding: 4rem 1.5rem;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-main { max-width: 44rem; margin: 0 auto; }
-h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
-.lede { margin: 0.5rem 0 2.5rem; color: var(--muted); }
-.empty { color: var(--muted); }
-.projects { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
-.projects a {
-  display: block;
-  padding: 1.25rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  text-decoration: none;
-  color: inherit;
-}
-.projects a:hover, .projects a:focus-visible { border-color: var(--accent); }
-.title { display: block; font-weight: 600; color: var(--accent); }
-.description { display: block; margin-top: 0.25rem; color: var(--muted); font-size: 0.95rem; }
-`;
