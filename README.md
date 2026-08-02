@@ -17,7 +17,11 @@ bun test
 ```
 
 Output lands in `dist/`: one directory per project, plus a generated `index.html`
-linking to them all.
+linking to them all, the site's own `app.css`, and `fonts/` — Public Sans and
+JetBrains Mono, copied out of `node_modules` at build time. Nothing is loaded
+from a CDN, and the index page shares its visual system with
+`openpgpkey.itzemoji.com`. Because those assets sit at the root of `dist/`,
+`fonts` is a reserved project name and the manifest rejects it.
 
 `bun run serve` never builds — it serves whatever is already in `dist/`, so you can
 rebuild in another terminal without restarting it. Pass `--port 3000` or set `$PORT`
