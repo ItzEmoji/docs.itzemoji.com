@@ -19,11 +19,16 @@ linking to them all.
 
 ## Adding a project
 
-1. Add the submodule:
+1. Add the submodule using its **HTTPS** URL, not SSH:
 
    ```bash
-   git submodule add <repo-url> projects/<name>
+   git submodule add https://github.com/<org>/<repo>.git projects/<name>
    ```
+
+   `actions/checkout` authenticates submodules by injecting an HTTP header for
+   `https://` URLs; a `git@github.com:` URL bypasses that and the CI checkout
+   fails. If the source repository is private, `SUBMODULES_TOKEN` must be a
+   PAT with read access to it.
 
 2. Add an entry to `projects.json`. The file must contain a top-level `projects` array:
 
@@ -58,17 +63,31 @@ linking to them all.
 
 A project that is not listed in `projects.json` is not built.
 
+The project must be a Bun/npm project whose `buildCommand` runs from its own
+directory (`path`). It needs its own `package.json` — a project with no
+`package.json` anywhere in its ancestry will make `bun install` fail, and one
+with no `package.json` of its own will resolve to this repo's root
+`package.json` instead of its own.
+
 ## Behaviour
 
 - Projects build sequentially, in manifest order.
 - Any failure — invalid manifest, uninitialised submodule, failed install, failed build,
   missing output — aborts the whole run with a non-zero exit code. `dist/` is only
   written after every build succeeds, so a partial deploy is impossible.
+- Building a subset (e.g. `bun run build beacon`) still wipes `dist/` entirely and
+  writes an index listing only the projects built in that run — partial builds are
+  not additive. Anything from a previous full build that isn't part of the current
+  run is gone.
 
 ## Deployment
 
 `.github/workflows/deploy.yml` runs on every push to `main` and publishes `dist/` to
 Cloudflare Pages.
+
+The Cloudflare Pages project `docs-itzemoji-com` must already exist in the account —
+`wrangler pages deploy` does not create it — and the API token needs the
+*Cloudflare Pages — Edit* permission.
 
 Required repository secrets:
 
