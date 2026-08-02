@@ -71,13 +71,18 @@ export async function buildProject(
   const spawn = options.spawn ?? spawnShell;
   const cwd = join(options.repoRoot, project.path);
 
+  // Defensive guard: callers (e.g. the CLI) typically preflight all projects
+  // up front before building any of them, but re-checking here keeps
+  // buildProject safe to call on its own without relying on that.
   await preflight(project, options.repoRoot);
 
   const env = buildEnv(process.env, {
     DOCS_BASE_PATH: basePathFor(project.name),
   });
 
-  const hasLockfile = await Bun.file(join(cwd, "bun.lock")).exists();
+  const hasLockfile =
+    (await Bun.file(join(cwd, "bun.lock")).exists()) ||
+    (await Bun.file(join(cwd, "bun.lockb")).exists());
   const install = hasLockfile ? "bun install --frozen-lockfile" : "bun install";
 
   const installed = await spawn({ command: install, cwd, env, prefix: project.name });

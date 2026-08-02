@@ -44,11 +44,17 @@ function recordingSpawner(): { calls: SpawnRequest[]; spawn: Spawner } {
   };
 }
 
-async function seedSubmodule(options: { lockfile?: boolean; output?: boolean } = {}) {
+async function seedSubmodule(
+  options: { lockfile?: boolean | "bun.lockb"; output?: boolean } = {},
+) {
   const dir = join(root, project.path);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "package.json"), "{}");
-  if (options.lockfile) await writeFile(join(dir, "bun.lock"), "");
+  if (options.lockfile === "bun.lockb") {
+    await writeFile(join(dir, "bun.lockb"), "");
+  } else if (options.lockfile) {
+    await writeFile(join(dir, "bun.lock"), "");
+  }
   if (options.output) {
     await mkdir(join(dir, project.outputDir), { recursive: true });
     await writeFile(join(dir, project.outputDir, "index.html"), "<h1>docs</h1>");
@@ -125,6 +131,15 @@ describe("preflight", () => {
 describe("buildProject", () => {
   test("installs with a frozen lockfile when one exists", async () => {
     await seedSubmodule({ lockfile: true, output: true });
+    const { calls, spawn } = recordingSpawner();
+
+    await buildProject(project, { repoRoot: root, spawn });
+
+    expect(calls[0]!.command).toBe("bun install --frozen-lockfile");
+  });
+
+  test("installs with a frozen lockfile when a binary bun.lockb exists", async () => {
+    await seedSubmodule({ lockfile: "bun.lockb", output: true });
     const { calls, spawn } = recordingSpawner();
 
     await buildProject(project, { repoRoot: root, spawn });

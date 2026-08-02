@@ -38,7 +38,8 @@ if (import.meta.main) {
   try {
     await run(process.argv.slice(2), { repoRoot: process.cwd() });
   } catch (error) {
-    console.error(`\n✗ ${(error as Error).message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`\n✗ ${message}`);
     process.exit(1);
   }
 }

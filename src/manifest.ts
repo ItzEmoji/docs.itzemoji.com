@@ -58,7 +58,7 @@ function validateProject(entry: unknown, index: number): ProjectConfig {
     const value = record[field];
     if (typeof value !== "string" || value.length === 0) {
       throw new Error(
-        `projects.json: ${label} is missing a non-empty string "${field}"`,
+        `projects.json: ${label} requires a non-empty string "${field}"`,
       );
     }
   }
