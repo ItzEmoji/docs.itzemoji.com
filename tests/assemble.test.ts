@@ -83,4 +83,37 @@ describe("assemble", () => {
 
     expect(await Bun.file(join(dist, "index.html")).exists()).toBe(true);
   });
+
+  test("writes the stylesheet and vendors both typefaces", async () => {
+    const dist = join(root, "dist");
+    await assemble([], { repoRoot: root, distDir: dist });
+
+    const css = await Bun.file(join(dist, "app.css")).text();
+    expect(css).toContain("--accent: #1b4b8f");
+    expect(css).toContain("/fonts/public-sans-400.woff2");
+
+    for (const font of [
+      "public-sans-400.woff2",
+      "public-sans-500.woff2",
+      "public-sans-600.woff2",
+      "jetbrains-mono-400.woff2",
+    ]) {
+      const file = Bun.file(join(dist, "fonts", font));
+      expect(await file.exists()).toBe(true);
+      expect(await file.size).toBeGreaterThan(0);
+    }
+  });
+
+  test("every font the stylesheet declares is one the build vendors", async () => {
+    const dist = join(root, "dist");
+    await assemble([], { repoRoot: root, distDir: dist });
+
+    const css = await Bun.file(join(dist, "app.css")).text();
+    const declared = [...css.matchAll(/url\("\/fonts\/([^"]+)"\)/g)].map((m) => m[1]!);
+
+    expect(declared.length).toBeGreaterThan(0);
+    for (const font of declared) {
+      expect(await Bun.file(join(dist, "fonts", font)).exists()).toBe(true);
+    }
+  });
 });
