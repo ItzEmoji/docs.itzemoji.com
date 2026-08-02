@@ -8,6 +8,7 @@ import {
   buildProject,
   pipePrefixed,
   preflight,
+  spawnShell,
   type SpawnRequest,
   type Spawner,
 } from "../src/build.ts";
@@ -109,6 +110,46 @@ describe("pipePrefixed", () => {
     await pipePrefixed(toStream(chunks), "test", (line) => lines.push(line));
 
     expect(lines).toEqual(["[test] ab�"]);
+  });
+});
+
+describe("spawnShell", () => {
+  test("runs a command and prefixes its output", async () => {
+    const originalLog = console.log;
+    const lines: string[] = [];
+    console.log = (line: string) => lines.push(line);
+
+    try {
+      const result = await spawnShell({
+        command: "echo hi",
+        cwd: root,
+        env: {},
+        prefix: "smoke",
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(lines).toContain("[smoke] hi");
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test("reports a non-zero exit code", async () => {
+    const originalLog = console.log;
+    console.log = () => {};
+
+    try {
+      const result = await spawnShell({
+        command: "exit 3",
+        cwd: root,
+        env: {},
+        prefix: "smoke",
+      });
+
+      expect(result.exitCode).toBe(3);
+    } finally {
+      console.log = originalLog;
+    }
   });
 });
 

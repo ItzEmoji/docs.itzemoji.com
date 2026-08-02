@@ -1,5 +1,13 @@
-import { describe, expect, test } from "bun:test";
-import { parseManifest, selectProjects, type ProjectConfig } from "../src/manifest.ts";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  loadManifest,
+  parseManifest,
+  selectProjects,
+  type ProjectConfig,
+} from "../src/manifest.ts";
 
 const valid = {
   projects: [
@@ -64,6 +72,34 @@ describe("parseManifest", () => {
   test("rejects a non-string field", () => {
     const broken = { ...valid.projects[0], description: 42 };
     expect(() => parseManifest(withProjects([broken]))).toThrow(/"description"/);
+  });
+});
+
+describe("loadManifest", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "monodocs-manifest-"));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  test("rejects a path that does not exist", async () => {
+    await expect(loadManifest(join(root, "projects.json"))).rejects.toThrow(
+      /manifest not found/,
+    );
+  });
+
+  test("reads and parses a manifest file from disk", async () => {
+    const manifestPath = join(root, "projects.json");
+    await writeFile(manifestPath, JSON.stringify(valid));
+
+    const projects = await loadManifest(manifestPath);
+
+    expect(projects).toHaveLength(1);
+    expect(projects[0]!.name).toBe("aeroflare");
   });
 });
 
