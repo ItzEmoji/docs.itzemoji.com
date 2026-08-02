@@ -25,16 +25,20 @@ linking to them all.
    git submodule add <repo-url> projects/<name>
    ```
 
-2. Add an entry to `projects.json`:
+2. Add an entry to `projects.json`. The file must contain a top-level `projects` array:
 
    ```json
    {
-     "name": "aeroflare",
-     "path": "projects/aeroflare",
-     "buildCommand": "bun run docs:build",
-     "outputDir": "docs/.vitepress/dist",
-     "title": "Aeroflare",
-     "description": "One line shown on the index page."
+     "projects": [
+       {
+         "name": "aeroflare",
+         "path": "projects/aeroflare",
+         "buildCommand": "bun run docs:build",
+         "outputDir": "docs/.vitepress/dist",
+         "title": "Aeroflare",
+         "description": "One line shown on the index page."
+       }
+     ]
    }
    ```
 
