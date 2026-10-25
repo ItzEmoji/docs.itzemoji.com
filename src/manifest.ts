@@ -1,17 +1,11 @@
 export interface ProjectConfig {
   name: string;
-  path: string;
-  buildCommand: string;
-  outputDir: string;
   title: string;
   description: string;
 }
 
 const REQUIRED_FIELDS = [
   "name",
-  "path",
-  "buildCommand",
-  "outputDir",
   "title",
   "description",
 ] as const satisfies readonly (keyof ProjectConfig)[];
@@ -19,10 +13,9 @@ const REQUIRED_FIELDS = [
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
- * Directories the site's own assets occupy at the root of `dist/`. A project
- * named after one of them would be copied in and then overwritten by the
- * assets, silently serving a stylesheet's fonts where its documentation
- * should be.
+ * Paths the site's own assets occupy at the root of docs.itzemoji.com. A
+ * project routed to one of them would shadow the assets, and every page that
+ * loads its fonts from there would silently lose them.
  */
 const RESERVED_NAMES = new Set(["fonts"]);
 
@@ -86,9 +79,6 @@ function validateProject(entry: unknown, index: number): ProjectConfig {
 
   return {
     name: project.name,
-    path: project.path,
-    buildCommand: project.buildCommand,
-    outputDir: project.outputDir,
     title: project.title,
     description: project.description,
   };
@@ -100,22 +90,4 @@ export async function loadManifest(filePath: string): Promise<ProjectConfig[]> {
     throw new Error(`manifest not found at ${filePath}`);
   }
   return parseManifest(await file.text());
-}
-
-export function selectProjects(
-  projects: ProjectConfig[],
-  names: string[],
-): ProjectConfig[] {
-  if (names.length === 0) return projects;
-
-  const known = new Set(projects.map((p) => p.name));
-  for (const name of names) {
-    if (!known.has(name)) {
-      const valid = projects.map((p) => p.name).join(", ") || "(none)";
-      throw new Error(`unknown project "${name}" — valid names: ${valid}`);
-    }
-  }
-
-  const wanted = new Set(names);
-  return projects.filter((p) => wanted.has(p.name));
 }

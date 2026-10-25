@@ -73,6 +73,14 @@ describe("createServer", () => {
     expect(response.status).toBe(404);
   });
 
+  test("serves dist/404.html with a 404 status when it exists", async () => {
+    await writeFile(join(root, "dist", "404.html"), "<h1>Page not found</h1>");
+    const response = await fetch(`${start()}/aeroflare/nope`);
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("<h1>Page not found</h1>");
+  });
+
   test("returns 404 for a directory without an index.html", async () => {
     await mkdir(join(root, "dist", "empty"), { recursive: true });
     const response = await fetch(`${start()}/empty/`);
