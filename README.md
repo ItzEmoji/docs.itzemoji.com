@@ -1,110 +1,69 @@
 # docs.itzemoji.com
 
-Aggregates the documentation of several projects — each vendored as a git submodule —
-into one static site. Each project is served at `docs.itzemoji.com/<project>/`.
+The front door of `docs.itzemoji.com`. This repository does two things:
+
+1. **Generates the landing page** — an index linking every project listed in
+   `projects.json`.
+2. **Generates the shared 404 page** — and ships a script that copies it into
+   any other project's build output, so a miss anywhere on the site looks the same.
+
+It does not build or host any project's documentation. Each project deploys
+itself, and Cloudflare routes `docs.itzemoji.com/<project>/*` to that project's
+deployment. Everything else on the domain is served from this repository's `dist/`.
 
 ## Usage
 
 ```bash
 bun install
-git submodule update --init --recursive
 
-bun run build            # build every project in projects.json
-bun run build aeroflare  # build only one
+bun run build            # write dist/: index.html, 404.html, app.css, fonts/
 bun run serve            # preview dist/ at http://localhost:8080
 bun run dev              # build, then serve
 bun test
 ```
 
-Output lands in `dist/`: one directory per project, plus a generated `index.html`
-linking to them all, the site's own `app.css`, and `fonts/` — Public Sans and
-JetBrains Mono, copied out of `node_modules` at build time. Nothing is loaded
-from a CDN, and the index page shares its visual system with
-`openpgpkey.itzemoji.com`. Because those assets sit at the root of `dist/`,
-`fonts` is a reserved project name and the manifest rejects it.
+`app.css` and `fonts/` (Public Sans and JetBrains Mono, copied out of
+`node_modules` at build time) live at the root of the domain. Nothing is loaded
+from a CDN, and the pages share their visual system with `openpgpkey.itzemoji.com`.
+Because the fonts sit at `/fonts/`, `fonts` is a reserved project name and the
+manifest rejects it.
 
-`bun run serve` never builds — it serves whatever is already in `dist/`, so you can
-rebuild in another terminal without restarting it. Pass `--port 3000` or set `$PORT`
-to change the port. Previewing matters because a wrong `DOCS_BASE_PATH` produces a
-clean build log and a visibly broken page: check that `/<project>/` renders with its
-styles intact.
+`bun run serve` never builds — it serves whatever is already in `dist/`, and
+answers unknown paths with `dist/404.html`, as Cloudflare does. Pass
+`--port 3000` or set `$PORT` to change the port.
 
 ## Adding a project
 
-1. Add the submodule using its **HTTPS** URL, not SSH:
-
-   ```bash
-   git submodule add https://github.com/<org>/<repo>.git projects/<name>
-   ```
-
-   `actions/checkout` authenticates submodules by injecting an HTTP header for
-   `https://` URLs; a `git@github.com:` URL bypasses that and the CI checkout
-   fails. If the source repository is private, `SUBMODULES_TOKEN` must be a
-   PAT with read access to it.
-
-2. Add an entry to `projects.json`. The file must contain a top-level `projects` array:
+1. Add an entry to `projects.json`:
 
    ```json
    {
      "projects": [
        {
          "name": "aeroflare",
-         "path": "projects/aeroflare",
-         "buildCommand": "bun run docs:build",
-         "outputDir": "docs/.vitepress/dist",
          "title": "Aeroflare",
-         "description": "One line shown on the index page."
+         "description": "One line shown on the landing page."
        }
      ]
    }
    ```
 
-   `name` is the URL segment. `outputDir` is relative to `path` and must contain an
-   `index.html` after the build.
+   `name` is the URL segment: the project is linked at `/<name>/`.
 
-3. Make the project honour the base path. The orchestrator sets `DOCS_BASE_PATH`
-   (for example `/aeroflare/`) in the build command's environment. The project's docs
-   config must read it and default to `/` so the docs still build standalone —
-   for VitePress:
+2. Build the project's docs with base path `/<name>/`, so its assets resolve
+   under the route.
 
-   ```ts
-   export default defineConfig({
-     base: process.env.DOCS_BASE_PATH ?? "/",
-   });
+3. Copy the shared 404 page into the project's build output before deploying it:
+
+   ```bash
+   bun run copy-404 ../aeroflare/docs/build
    ```
 
-A project that is not listed in `projects.json` is not built.
+   It accepts several directories at once, checks they all exist before writing
+   anything, and overwrites any `404.html` the docs framework generated. The page
+   inlines its stylesheet, so it renders correctly on the project's own
+   deployment too. On `docs.itzemoji.com` it also picks up the site's fonts from
+   `/fonts/`.
 
-The project must be a Bun/npm project whose `buildCommand` runs from its own
-directory (`path`). It needs its own `package.json` — a project with no
-`package.json` anywhere in its ancestry will make `bun install` fail, and one
-with no `package.json` of its own will resolve to this repo's root
-`package.json` instead of its own.
-
-## Behaviour
-
-- Projects build sequentially, in manifest order.
-- Any failure — invalid manifest, uninitialised submodule, failed install, failed build,
-  missing output — aborts the whole run with a non-zero exit code. `dist/` is only
-  written after every build succeeds, so a partial deploy is impossible.
-- Building a subset (e.g. `bun run build beacon`) still wipes `dist/` entirely and
-  writes an index listing only the projects built in that run — partial builds are
-  not additive. Anything from a previous full build that isn't part of the current
-  run is gone.
-
-## Deployment
-
-`.github/workflows/deploy.yml` runs on every push to `main` and publishes `dist/` to
-Cloudflare Pages.
-
-The Cloudflare Pages project `docs-itzemoji-com` must already exist in the account —
-`wrangler pages deploy` does not create it — and the API token needs the
-*Cloudflare Pages — Edit* permission.
-
-Required repository secrets:
-
-| Secret | Purpose |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Token with the Cloudflare Pages edit permission |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
-| `SUBMODULES_TOKEN` | Only if a submodule lives in a private repo the default token cannot read |
+4. Add a Cloudflare route sending `docs.itzemoji.com/<name>/*` to the project's
+   deployment.

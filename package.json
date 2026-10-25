@@ -5,15 +5,18 @@
   "type": "module",
   "scripts": {
     "build": "bun run src/cli.ts",
+    "copy-404": "bun run src/copy-404.ts",
     "serve": "bun run src/serve.ts",
     "dev": "bun run build && bun run serve",
     "test": "bun test tests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release": "semantic-release"
   },
   "devDependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/public-sans": "^5.3.0",
     "@types/bun": "latest",
+    "semantic-release": "^25.0.9",
     "typescript": "^5"
   }
 }

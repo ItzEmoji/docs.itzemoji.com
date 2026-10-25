@@ -35,7 +35,7 @@ export async function handleRequest(
   }
 
   if (pathname.endsWith("/")) {
-    return serveFile(join(target, "index.html"));
+    return serveFile(join(target, "index.html"), root);
   }
 
   const file = Bun.file(target);
@@ -52,15 +52,20 @@ export async function handleRequest(
     });
   }
 
-  return notFound();
+  return notFound(root);
 }
 
-async function serveFile(path: string): Promise<Response> {
+async function serveFile(path: string, root: string): Promise<Response> {
   const file = Bun.file(path);
-  return (await file.exists()) ? new Response(file) : notFound();
+  return (await file.exists()) ? new Response(file) : notFound(root);
 }
 
-function notFound(): Response {
+/** Serves dist/404.html, as Cloudflare does, so the page can be previewed. */
+async function notFound(root: string): Promise<Response> {
+  const page = Bun.file(join(root, "404.html"));
+  if (await page.exists()) {
+    return new Response(page, { status: 404 });
+  }
   return new Response("Not found\n", { status: 404 });
 }
 

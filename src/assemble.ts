@@ -1,14 +1,10 @@
-import { copyFile, cp, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { renderIndexPage } from "./index-page.ts";
 import type { ProjectConfig } from "./manifest.ts";
+import { renderNotFoundPage } from "./not-found-page.ts";
 import { APP_CSS } from "./styles.ts";
-
-export interface AssembleOptions {
-  repoRoot: string;
-  distDir: string;
-}
 
 /**
  * Public Sans carries the prose, JetBrains Mono the served paths. Latin
@@ -40,20 +36,15 @@ export async function writeAssets(distDir: string): Promise<void> {
   }
 }
 
+/** Writes the landing page, the 404 page and their assets into a clean distDir. */
 export async function assemble(
   projects: ProjectConfig[],
-  options: AssembleOptions,
+  distDir: string,
 ): Promise<void> {
-  const { repoRoot, distDir } = options;
-
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
 
-  for (const project of projects) {
-    const source = join(repoRoot, project.path, project.outputDir);
-    await cp(source, join(distDir, project.name), { recursive: true });
-  }
-
   await writeAssets(distDir);
   await Bun.write(join(distDir, "index.html"), renderIndexPage(projects));
+  await Bun.write(join(distDir, "404.html"), renderNotFoundPage());
 }

@@ -1,7 +1,6 @@
 import { icons } from "./icons.ts";
+import { escapeHtml, renderPage } from "./layout.ts";
 import type { ProjectConfig } from "./manifest.ts";
-
-const SITE_TITLE = "docs.itzemoji.com";
 
 /**
  * The direction contract for this build, emitted into the page so it survives
@@ -27,58 +26,23 @@ const CONTRACT = `
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 `;
 
-export function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 export function renderIndexPage(projects: ProjectConfig[]): string {
   const count = `${projects.length} ${projects.length === 1 ? "project" : "projects"}`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="description" content="Documentation for every ItzEmoji project, in one place.">
-<title>Documentation — ${SITE_TITLE}</title>
-<link rel="preload" href="/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/app.css">
-</head>
-<body>
-<!--${CONTRACT}-->
-<header class="masthead">
-  <div class="wrap masthead-inner">
-    <a class="brand" href="/">
-      ${icons.book}<span>${SITE_TITLE}</span>
-    </a>
-  </div>
-</header>
-
-<main><div class="wrap">
-<section class="section">
+  return renderPage({
+    title: "Documentation",
+    description: "Documentation for every ItzEmoji project, in one place.",
+    styles: '<link rel="stylesheet" href="/app.css">',
+    comment: CONTRACT,
+    main: `<section class="section">
   <h1 class="page-title">Documentation</h1>
 </section>
 
 <section class="section">
   <h2 class="section-head">${count}</h2>
 ${renderBody(projects)}
-</section>
-</div></main>
-
-<footer class="site-footer">
-  <div class="wrap inner">
-    <p>Built from each project's own repository.</p>
-  </div>
-</footer>
-</body>
-</html>
-`;
+</section>`,
+  });
 }
 
 function renderBody(projects: ProjectConfig[]): string {

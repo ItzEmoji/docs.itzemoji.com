@@ -6,9 +6,11 @@ import { assemble } from "../src/assemble.ts";
 import type { ProjectConfig } from "../src/manifest.ts";
 
 let root: string;
+let dist: string;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "monodocs-assemble-"));
+  dist = join(root, "dist");
 });
 
 afterEach(async () => {
@@ -16,77 +18,37 @@ afterEach(async () => {
 });
 
 function project(name: string): ProjectConfig {
-  return {
-    name,
-    path: `projects/${name}`,
-    buildCommand: "bun run docs:build",
-    outputDir: "build",
-    title: name,
-    description: `${name} docs`,
-  };
-}
-
-async function seedOutput(name: string, files: Record<string, string>): Promise<void> {
-  for (const [relative, contents] of Object.entries(files)) {
-    const target = join(root, "projects", name, "build", relative);
-    await mkdir(join(target, ".."), { recursive: true });
-    await writeFile(target, contents);
-  }
+  return { name, title: name, description: `${name} docs` };
 }
 
 describe("assemble", () => {
-  test("copies each project's output to dist/<name>/", async () => {
-    await seedOutput("aeroflare", {
-      "index.html": "<h1>aeroflare</h1>",
-      "assets/app.css": "body{}",
-    });
-    await seedOutput("beacon", { "index.html": "<h1>beacon</h1>" });
-
-    const dist = join(root, "dist");
-    await assemble([project("aeroflare"), project("beacon")], {
-      repoRoot: root,
-      distDir: dist,
-    });
-
-    expect(await Bun.file(join(dist, "aeroflare/index.html")).text()).toBe(
-      "<h1>aeroflare</h1>",
-    );
-    expect(await Bun.file(join(dist, "aeroflare/assets/app.css")).text()).toBe("body{}");
-    expect(await Bun.file(join(dist, "beacon/index.html")).text()).toBe("<h1>beacon</h1>");
-  });
-
   test("writes a root index page linking the projects", async () => {
-    await seedOutput("aeroflare", { "index.html": "<h1>aeroflare</h1>" });
-
-    const dist = join(root, "dist");
-    await assemble([project("aeroflare")], { repoRoot: root, distDir: dist });
+    await assemble([project("aeroflare"), project("beacon")], dist);
 
     const html = await Bun.file(join(dist, "index.html")).text();
     expect(html).toContain('href="/aeroflare/"');
+    expect(html).toContain('href="/beacon/"');
+  });
+
+  test("writes the 404 page", async () => {
+    await assemble([], dist);
+
+    const html = await Bun.file(join(dist, "404.html")).text();
+    expect(html).toContain("Page not found");
   });
 
   test("removes output from a previous run", async () => {
-    const dist = join(root, "dist");
     await mkdir(join(dist, "stale"), { recursive: true });
     await writeFile(join(dist, "stale/index.html"), "old");
-    await seedOutput("aeroflare", { "index.html": "new" });
 
-    await assemble([project("aeroflare")], { repoRoot: root, distDir: dist });
+    await assemble([project("aeroflare")], dist);
 
     expect(await Bun.file(join(dist, "stale/index.html")).exists()).toBe(false);
-    expect(await Bun.file(join(dist, "aeroflare/index.html")).exists()).toBe(true);
-  });
-
-  test("writes only the index page when there are no projects", async () => {
-    const dist = join(root, "dist");
-    await assemble([], { repoRoot: root, distDir: dist });
-
     expect(await Bun.file(join(dist, "index.html")).exists()).toBe(true);
   });
 
   test("writes the stylesheet and vendors both typefaces", async () => {
-    const dist = join(root, "dist");
-    await assemble([], { repoRoot: root, distDir: dist });
+    await assemble([], dist);
 
     const css = await Bun.file(join(dist, "app.css")).text();
     expect(css).toContain("--accent: #1b4b8f");
@@ -105,8 +67,7 @@ describe("assemble", () => {
   });
 
   test("every font the stylesheet declares is one the build vendors", async () => {
-    const dist = join(root, "dist");
-    await assemble([], { repoRoot: root, distDir: dist });
+    await assemble([], dist);
 
     const css = await Bun.file(join(dist, "app.css")).text();
     const declared = [...css.matchAll(/url\("\/fonts\/([^"]+)"\)/g)].map((m) => m[1]!);

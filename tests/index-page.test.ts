@@ -1,13 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { escapeHtml, renderIndexPage } from "../src/index-page.ts";
+import { renderIndexPage } from "../src/index-page.ts";
+import { escapeHtml } from "../src/layout.ts";
 import type { ProjectConfig } from "../src/manifest.ts";
 
 function project(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
   return {
     name: "aeroflare",
-    path: "projects/aeroflare",
-    buildCommand: "bun run docs:build",
-    outputDir: "dist",
     title: "Aeroflare",
     description: "Flight planning toolkit.",
     ...overrides,

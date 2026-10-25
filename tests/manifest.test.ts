@@ -2,20 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  loadManifest,
-  parseManifest,
-  selectProjects,
-  type ProjectConfig,
-} from "../src/manifest.ts";
+import { loadManifest, parseManifest } from "../src/manifest.ts";
 
 const valid = {
   projects: [
     {
       name: "aeroflare",
-      path: "projects/aeroflare",
-      buildCommand: "bun run docs:build",
-      outputDir: "docs/.vitepress/dist",
       title: "Aeroflare",
       description: "Flight planning toolkit.",
     },
@@ -31,7 +23,6 @@ describe("parseManifest", () => {
     const projects = parseManifest(JSON.stringify(valid));
     expect(projects).toHaveLength(1);
     expect(projects[0]!.name).toBe("aeroflare");
-    expect(projects[0]!.outputDir).toBe("docs/.vitepress/dist");
   });
 
   test("accepts an empty project list", () => {
@@ -105,31 +96,5 @@ describe("loadManifest", () => {
 
     expect(projects).toHaveLength(1);
     expect(projects[0]!.name).toBe("aeroflare");
-  });
-});
-
-describe("selectProjects", () => {
-  const projects: ProjectConfig[] = [
-    { ...valid.projects[0]! },
-    { ...valid.projects[0]!, name: "beacon", title: "Beacon" },
-  ];
-
-  test("returns every project when no names are given", () => {
-    expect(selectProjects(projects, []).map((p) => p.name)).toEqual([
-      "aeroflare",
-      "beacon",
-    ]);
-  });
-
-  test("returns only the requested projects in manifest order", () => {
-    expect(selectProjects(projects, ["beacon", "aeroflare"]).map((p) => p.name)).toEqual(
-      ["aeroflare", "beacon"],
-    );
-  });
-
-  test("throws listing the valid names for an unknown project", () => {
-    expect(() => selectProjects(projects, ["nope"])).toThrow(
-      /unknown project "nope".*aeroflare, beacon/,
-    );
   });
 });
